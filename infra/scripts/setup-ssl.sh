@@ -1,9 +1,21 @@
 #!/bin/bash
 set -e
 
+cd "$(dirname "$0")/../.."
+
+# Load .env file if it exists
+if [ -f "infra/.env" ]; then
+  export $(grep -v '^#' infra/.env | xargs)
+fi
+
 echo "🔒 Setting up SSL with Let's Encrypt..."
 
+# Extract domain from ALLOWED_ORIGIN or use default
 DOMAIN="${DOMAIN:-task.acoustic.uz}"
+if [ -n "$ALLOWED_ORIGIN" ]; then
+  DOMAIN=$(echo "$ALLOWED_ORIGIN" | sed 's|https\?://||')
+fi
+
 EMAIL="${EMAIL:-admin@acoustic.uz}"
 
 # Stop nginx temporarily
