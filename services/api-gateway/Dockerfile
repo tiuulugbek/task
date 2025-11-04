@@ -2,12 +2,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml tsconfig.json ./
 COPY services/shared ./services/shared
 COPY services/api-gateway ./services/api-gateway
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm install --frozen-lockfile
+# Install with devDependencies for building
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 RUN pnpm --filter @acoustic/shared build
 RUN pnpm --filter @acoustic/api-gateway build
 

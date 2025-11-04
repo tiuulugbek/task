@@ -89,7 +89,7 @@ Object.entries(services).forEach(([path, target]) => {
   );
 });
 
-app.get('/healthz', async (req, res) => {
+app.get('/healthz', async (_req, res) => {
   const healthChecks: Record<string, string> = {};
   
   for (const [path, url] of Object.entries(services)) {
@@ -109,7 +109,7 @@ app.get('/healthz', async (req, res) => {
   });
 });
 
-app.get('/api/docs', (req, res) => {
+app.get('/api/docs', (_req, res) => {
   res.json({
     info: {
       title: 'Acoustic Task Manager API',
@@ -129,12 +129,3 @@ app.get('/api/docs', (req, res) => {
 app.listen(PORT, () => {
   logger.info(`API Gateway listening on port ${PORT}`);
 });
-import { swaggerSpec } from './swagger';
-
-// ... existing code ...
-
-app.get('/api/docs', (req, res) => {
-  res.json(swaggerSpec);
-});
-
-// ... existing code ...
