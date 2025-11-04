@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["task"]
+}
+
+schema "task" {
+  model Task {
+    id          String      @id @default(uuid())
+    projectId   String      @db.Uuid
+    columnId    String      @db.Uuid
+    title       String
+    description String?     @db.Text
+    priority    String      @default("MEDIUM") @db.VarChar(20)
+    status      String      @default("OPEN") @db.VarChar(20)
+    dueAt       DateTime?   @db.Timestamp(6)
+    createdById String      @db.Uuid
+    createdAt   DateTime    @default(now()) @db.Timestamp(6)
+    updatedAt   DateTime    @updatedAt @db.Timestamp(6)
+
+    assignees TaskAssignee[]
+    watchers  TaskWatcher[]
+    taskLabels TaskTaskLabel[]
+    history   StatusHistory[]
+
+    @@index([projectId])
+    @@index([columnId])
+    @@index([status])
+    @@index([priority])
+    @@index([dueAt])
+    @@index([createdById])
+    @@map("tasks")
+  }
+
+  model TaskAssignee {
+    id        String   @id @default(uuid())
+    taskId    String   @db.Uuid
+    userId    String   @db.Uuid
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+
+    task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+    @@unique([taskId, userId])
+    @@index([taskId])
+    @@index([userId])
+    @@map("task_assignees")
+  }
+
+  model TaskWatcher {
+    id        String   @id @default(uuid())
+    taskId    String   @db.Uuid
+    userId    String   @db.Uuid
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+
+    task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+    @@unique([taskId, userId])
+    @@index([taskId])
+    @@index([userId])
+    @@map("task_watchers")
+  }
+
+  model TaskLabel {
+    id          String   @id @default(uuid())
+    workspaceId String   @db.Uuid
+    name        String
+    color       String   @default("#F07E22")
+    createdAt   DateTime @default(now()) @db.Timestamp(6)
+    updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+    taskLabels TaskTaskLabel[]
+
+    @@index([workspaceId])
+    @@map("task_labels")
+  }
+
+  model TaskTaskLabel {
+    id        String   @id @default(uuid())
+    taskId    String   @db.Uuid
+    labelId   String   @db.Uuid
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+
+    task  Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+    label TaskLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+    @@unique([taskId, labelId])
+    @@index([taskId])
+    @@index([labelId])
+    @@map("task_task_labels")
+  }
+
+  model StatusHistory {
+    id        String   @id @default(uuid())
+    taskId    String   @db.Uuid
+    status    String   @db.VarChar(20)
+    userId    String   @db.Uuid
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+
+    task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+    @@index([taskId])
+    @@index([createdAt])
+    @@map("status_history")
+  }
+}

@@ -1,0 +1,321 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: acoustic-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-acoustic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-acoustic_password}
+      POSTGRES_DB: ${POSTGRES_DB:-acoustic}
+      TZ: Asia/Tashkent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-acoustic}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acoustic-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: acoustic-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-acoustic}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-acoustic_password}
+      TZ: Asia/Tashkent
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acoustic-network
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: acoustic-api-gateway
+    environment:
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      WORKSPACE_SERVICE_URL: http://workspace-service:3003
+      PROJECT_SERVICE_URL: http://project-service:3004
+      TASK_SERVICE_URL: http://task-service:3005
+      COMMENT_SERVICE_URL: http://comment-service:3006
+      ATTACHMENT_SERVICE_URL: http://attachment-service:3007
+      NOTIFICATION_SERVICE_URL: http://notification-service:3008
+      TELEGRAM_BOT_SERVICE_URL: http://telegram-bot-service:3009
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-https://task.acoustic.uz}
+      TZ: Asia/Tashkent
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: services/auth-service/Dockerfile
+    container_name: acoustic-auth-service
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      USER_SERVICE_URL: http://user-service:3002
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-https://task.acoustic.uz}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: services/user-service/Dockerfile
+    container_name: acoustic-user-service
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=user_identity
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  workspace-service:
+    build:
+      context: ..
+      dockerfile: services/workspace-service/Dockerfile
+    container_name: acoustic-workspace-service
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=workspace
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  project-service:
+    build:
+      context: ..
+      dockerfile: services/project-service/Dockerfile
+    container_name: acoustic-project-service
+    environment:
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=project
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  task-service:
+    build:
+      context: ..
+      dockerfile: services/task-service/Dockerfile
+    container_name: acoustic-task-service
+    environment:
+      PORT: 3005
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=task
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-acoustic}:${RABBITMQ_PASSWORD:-acoustic_password}@rabbitmq:5672
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  comment-service:
+    build:
+      context: ..
+      dockerfile: services/comment-service/Dockerfile
+    container_name: acoustic-comment-service
+    environment:
+      PORT: 3006
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=comment
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-acoustic}:${RABBITMQ_PASSWORD:-acoustic_password}@rabbitmq:5672
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  attachment-service:
+    build:
+      context: ..
+      dockerfile: services/attachment-service/Dockerfile
+    container_name: acoustic-attachment-service
+    environment:
+      PORT: 3007
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=attachment
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE: 26214400
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    volumes:
+      - attachment_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: services/notification-service/Dockerfile
+    container_name: acoustic-notification-service
+    environment:
+      PORT: 3008
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}?schema=notification
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-acoustic}:${RABBITMQ_PASSWORD:-acoustic_password}@rabbitmq:5672
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  telegram-bot-service:
+    build:
+      context: ..
+      dockerfile: services/telegram-bot-service/Dockerfile
+    container_name: acoustic-telegram-bot-service
+    environment:
+      PORT: 3009
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      WEBHOOK_URL: ${WEBHOOK_URL:-https://task.acoustic.uz/api/bot/webhook}
+      API_GATEWAY_URL: http://api-gateway:3000
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      - api-gateway
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  scheduler-service:
+    build:
+      context: ..
+      dockerfile: services/scheduler-service/Dockerfile
+    container_name: acoustic-scheduler-service
+    environment:
+      PORT: 3010
+      DATABASE_URL: postgresql://${POSTGRES_USER:-acoustic}:${POSTGRES_PASSWORD:-acoustic_password}@postgres:5432/${POSTGRES_DB:-acoustic}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-acoustic}:${RABBITMQ_PASSWORD:-acoustic_password}@rabbitmq:5672
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    container_name: acoustic-web
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://task.acoustic.uz/api}
+      NEXT_PUBLIC_TELEGRAM_BOT_NAME: ${NEXT_PUBLIC_TELEGRAM_BOT_NAME}
+      TZ: Asia/Tashkent
+      NODE_ENV: production
+    depends_on:
+      - api-gateway
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: acoustic-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - api-gateway
+      - web
+    networks:
+      - acoustic-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  attachment_data:
+
+networks:
+  acoustic-network:
+    driver: bridge

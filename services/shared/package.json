@@ -1,0 +1,24 @@
+{
+  "name": "@acoustic/shared",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "migrate": "echo 'No migrations for shared package'",
+    "migrate:dev": "echo 'No migrations for shared package'"
+  },
+  "dependencies": {
+    "zod": "^3.22.4",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "pino-pretty": "^10.3.1"
+  }
+}

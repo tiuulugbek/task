@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["project"]
+}
+
+schema "project" {
+  model Project {
+    id          String       @id @default(uuid())
+    workspaceId String       @db.Uuid
+    name        String
+    description String?      @db.Text
+    createdAt   DateTime     @default(now()) @db.Timestamp(6)
+    updatedAt   DateTime     @updatedAt @db.Timestamp(6)
+
+    columns BoardColumn[]
+
+    @@index([workspaceId])
+    @@map("projects")
+  }
+
+  model BoardColumn {
+    id        String   @id @default(uuid())
+    projectId String   @db.Uuid
+    name      String
+    order     Int      @default(0)
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+    updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    @@index([projectId, order])
+    @@map("board_columns")
+  }
+}

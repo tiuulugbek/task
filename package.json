@@ -1,0 +1,28 @@
+{
+  "name": "acoustic-task-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Acoustic Task Manager - Production-ready microservices-based task management system",
+  "workspaces": [
+    "services/*",
+    "web"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "pnpm": "^8.11.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

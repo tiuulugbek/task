@@ -1,0 +1,27 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["attachment"]
+}
+
+schema "attachment" {
+  model Attachment {
+    id          String   @id @default(uuid())
+    taskId      String   @db.Uuid
+    userId      String   @db.Uuid
+    filename    String
+    mimeType    String
+    size        Int
+    storagePath String   @db.Text
+    createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+    @@index([taskId])
+    @@index([userId])
+    @@map("attachments")
+  }
+}

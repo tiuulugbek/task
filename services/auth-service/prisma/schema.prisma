@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["auth"]
+}
+
+schema "auth" {
+  model Session {
+    id        String   @id @default(uuid())
+    userId    String   @db.Uuid
+    token     String   @unique @db.Text
+    refreshToken String? @unique @db.Text
+    expiresAt DateTime @db.Timestamp(6)
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+    updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+    @@index([userId])
+    @@index([token])
+    @@map("sessions")
+  }
+
+  model TokenBlacklist {
+    id        String   @id @default(uuid())
+    token     String   @unique @db.Text
+    expiresAt DateTime @db.Timestamp(6)
+    createdAt DateTime @default(now()) @db.Timestamp(6)
+
+    @@index([token])
+    @@map("token_blacklist")
+  }
+}

@@ -1,0 +1,25 @@
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["comment"]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String   @db.Uuid
+  userId    String   @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@schema("comment")
+  @@index([taskId])
+  @@index([userId])
+  @@map("comments")
+}

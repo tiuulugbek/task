@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running pre-commit checks..."
+
+pnpm lint || exit 1
+pnpm typecheck || exit 1
+pnpm test || exit 1
+
+echo "✅ Pre-commit checks passed"
